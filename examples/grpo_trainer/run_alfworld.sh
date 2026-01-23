@@ -1,6 +1,24 @@
 set -x
 ENGINE=${1:-vllm}
-export VLLM_ATTENTION_BACKEND=XFORMERS
+
+#会attention 降级到V0，暂时 comment
+#export VLLM_ATTENTION_BACKEND=XFORMERS
+
+# ====== 新增：强制全链路离线 & 关掉外部遥测/日志上报 ======
+export HF_HOME="/p/scratch/westai0052/liu52/.cache/huggingface"
+export TRANSFORMERS_OFFLINE=1
+export HF_HUB_OFFLINE=1
+export HF_DATASETS_OFFLINE=1
+export HF_HUB_ENABLE_HF_TRANSFER=0
+export HF_HUB_DISABLE_TELEMETRY=1
+# vLLM 自身的遥测/网络
+export VLLM_NO_USAGE_STATS=1
+# 脚本里启用了 wandb logger，但无网会卡，建议禁用
+export WANDB_DISABLED=true
+export WANDB_MODE=offline
+
+# ====== 关键：把模型路径改成本地绝对路径 ======
+LOCAL_QWEN="/p/scratch/westai0052/liu52/models/Qwen2.5-1.5B-Instruct"
 
 num_cpus_per_env_worker=0.1 # The CPU resource allocated for each environment worker. If you want to use less CPU resources, you can decrease this value.
 
@@ -25,7 +43,7 @@ python3 -m verl.trainer.main_ppo \
     data.filter_overlong_prompts=True \
     data.truncation='error' \
     data.return_raw_chat=True \
-    actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct \
+    actor_rollout_ref.model.path="$LOCAL_QWEN"\
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.model.use_remove_padding=True \
     actor_rollout_ref.actor.ppo_mini_batch_size=256 \
@@ -56,7 +74,7 @@ python3 -m verl.trainer.main_ppo \
     env.rollout.n=$group_size \
     env.resources_per_worker.num_cpus=$num_cpus_per_env_worker \
     trainer.critic_warmup=0 \
-    trainer.logger=['console','wandb'] \
+    trainer.logger=['console'] \
     trainer.project_name='verl_agent_alfworld' \
     trainer.experiment_name='grpo_qwen2.5_1.5b' \
     trainer.n_gpus_per_node=2 \

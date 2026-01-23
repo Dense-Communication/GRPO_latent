@@ -724,6 +724,12 @@ class RayPPOTrainer:
                 non_tensor_batch_keys_to_pop.append("tools_kwargs")
             if "env_kwargs" in test_batch.non_tensor_batch:
                 non_tensor_batch_keys_to_pop.append("env_kwargs")
+            # 保留 reward_model 字段（用于 naive reward manager 计算规则奖励）
+            if "reward_model" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("reward_model")
+            # 保留 extra_info 字段（某些 reward 函数可能需要）
+            if "extra_info" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("extra_info")
             test_gen_batch = test_batch.pop(
                 batch_keys=batch_keys_to_pop,
                 non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
@@ -1061,6 +1067,12 @@ class RayPPOTrainer:
                     non_tensor_batch_keys_to_pop.append("tools_kwargs")
                 if "env_kwargs" in batch.non_tensor_batch:
                     non_tensor_batch_keys_to_pop.append("env_kwargs")
+                # 保留 reward_model 字段（用于 naive reward manager 计算规则奖励）
+                if "reward_model" in batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("reward_model")
+                # 保留 extra_info 字段（某些 reward 函数可能需要）
+                if "extra_info" in batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("extra_info")
                 gen_batch = batch.pop(
                     batch_keys=batch_keys_to_pop,
                     non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
