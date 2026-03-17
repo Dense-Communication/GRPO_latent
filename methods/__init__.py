@@ -17,4 +17,6 @@ def default_agents() -> List[Agent]:
     ]
 
 
-__all__ = ["Agent", "default_agents"]
+from .latent_mas_rl import LatentMASMethodRL
+
+__all__ = ["Agent", "default_agents", "LatentMASMethodRL"]

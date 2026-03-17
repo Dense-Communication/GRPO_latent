@@ -46,7 +46,9 @@ class ModelWrapper:
             gpu_util = float(getattr(args, "gpu_memory_utilization", 0.9))
             
             print(f"[vLLM] Using vLLM backend for model {model_name}")
-            if args.enable_prefix_caching and args.method == "latent_mas": 
+            enable_prefix_caching = getattr(args, "enable_prefix_caching", False) if args else False
+            method = getattr(args, "method", None) if args else None
+            if enable_prefix_caching and method == "latent_mas":
                 self.vllm_engine = LLM(model=model_name, tensor_parallel_size=tp_size, gpu_memory_utilization=gpu_util, enable_prefix_caching=True, enable_prompt_embeds=True)
             else:
                 self.vllm_engine = LLM(model=model_name, tensor_parallel_size=tp_size, gpu_memory_utilization=gpu_util)
@@ -272,6 +274,29 @@ class ModelWrapper:
             add_special_tokens=False,
             return_tensors="pt",
         )["input_ids"].to(self.device)
+
+    def get_query_embedding(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """
+        Get embedding for input IDs, useful for policy decision making.
+
+        Args:
+            input_ids: [B, L] tensor of input token IDs
+
+        Returns:
+            [B, D] mean-pooled embedding
+        """
+        with torch.no_grad():
+            if hasattr(self, 'HF_model'):
+                embeds = self.HF_model.get_input_embeddings()(input_ids)
+            else:
+                embeds = self.model.get_input_embeddings()(input_ids)
+            return embeds.mean(dim=1)  # [B, D]
+
+    def get_hidden_dim(self) -> int:
+        """Get the hidden dimension of the model."""
+        if hasattr(self, 'HF_model'):
+            return self.HF_model.config.hidden_size
+        return self.model.config.hidden_size
 
     @torch.no_grad()
     def generate_latent_batch(

@@ -47,6 +47,69 @@ def normalize_answer(ans: Optional[str]) -> Optional[str]:
     return ans.strip().lower()
 
 
+def extract_choice_answer(text: str) -> Optional[str]:
+    """
+    Extract multiple choice answer (A/B/C/D) from text.
+    Used for GPQA, ARC, and other multiple choice datasets.
+    """
+    # Look for patterns like "Answer: A", "The answer is B", "(C)", etc.
+    patterns = [
+        r"(?:answer|choice|option)\s*(?:is|:)?\s*\(?([A-Da-d])\)?",
+        r"\b([A-Da-d])\s*(?:is correct|is the answer)",
+        r"\\boxed\{([A-Da-d])\}",
+        r"\(([A-Da-d])\)\s*$",
+        r"^([A-Da-d])[\.\):\s]",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+        if match:
+            return match.group(1).lower()
+
+    # Last resort: find any standalone A/B/C/D at end of text
+    lines = text.strip().split('\n')
+    for line in reversed(lines[-5:]):
+        line = line.strip()
+        if re.match(r'^[A-Da-d][\.\):\s]*$', line):
+            return line[0].lower()
+        match = re.search(r'\b([A-Da-d])\b', line)
+        if match and len(line) < 50:  # Short line with a letter
+            return match.group(1).lower()
+
+    return None
+
+
+def extract_winogrande_answer(text: str) -> Optional[str]:
+    """
+    Extract Winogrande answer (1 or 2) from text.
+    """
+    # Look for patterns like "Answer: 1", "The answer is 2", "option 1", etc.
+    patterns = [
+        r"(?:answer|choice|option)\s*(?:is|:)?\s*([12])",
+        r"\b([12])\s*(?:is correct|is the answer)",
+        r"\\boxed\{([12])\}",
+        r"^([12])[\.\):\s]*$",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+        if match:
+            return match.group(1)
+
+    # Last resort: find any standalone 1 or 2 at end of text
+    lines = text.strip().split('\n')
+    for line in reversed(lines[-5:]):
+        line = line.strip()
+        if re.match(r'^[12][\.\):\s]*$', line):
+            return line[0]
+        # Look for "1" or "2" in short lines
+        match = re.search(r'\b([12])\b', line)
+        if match and len(line) < 30:
+            return match.group(1)
+
+    return None
+
+
 def extract_markdown_python_block(text: str) -> Optional[str]:
     pattern = r"```python(.*?)```"
     matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
